@@ -1,0 +1,1564 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oracle Cloud Panel</title>
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="apple-touch-icon" href="/favicon.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        :root {
+            --bg-1: #eef3ff;
+            --bg-2: #f7f9ff;
+            --bg-3: #e9f7ff;
+            --ink-1: #101828;
+            --ink-2: #344054;
+            --ink-3: #667085;
+            --line: rgba(255, 255, 255, 0.75);
+            --glass: rgba(255, 255, 255, 0.62);
+            --glass-strong: rgba(255, 255, 255, 0.82);
+            --accent: #0a84ff;
+            --accent-2: #4aa3ff;
+            --good: #27c46a;
+            --bad: #ff5f57;
+            --shadow-soft: 0 14px 40px rgba(9, 30, 66, 0.10);
+            --shadow-card: 0 10px 24px rgba(15, 23, 42, 0.08);
+            --radius-xl: 22px;
+            --radius-lg: 16px;
+            --radius-md: 12px;
+        }
+
+        * { box-sizing: border-box; }
+        [x-cloak] { display: none !important; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            color: var(--ink-1);
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", sans-serif;
+            background:
+                radial-gradient(1200px 720px at 10% -10%, #ffffff 0%, transparent 55%),
+                radial-gradient(900px 560px at 90% 0%, #dff1ff 0%, transparent 60%),
+                radial-gradient(700px 460px at 60% 105%, #dce6ff 0%, transparent 65%),
+                linear-gradient(140deg, var(--bg-1) 0%, var(--bg-2) 50%, var(--bg-3) 100%);
+            background-attachment: fixed;
+        }
+
+        .aurora {
+            pointer-events: none;
+            position: fixed;
+            inset: 0;
+            overflow: hidden;
+            z-index: -1;
+        }
+
+        .aurora span {
+            position: absolute;
+            border-radius: 999px;
+            filter: blur(34px);
+            opacity: .45;
+            animation: drift 14s ease-in-out infinite alternate;
+        }
+
+        .aurora .a1 { width: 280px; height: 280px; background: #b9dcff; left: -70px; top: 50px; }
+        .aurora .a2 { width: 240px; height: 240px; background: #d5d9ff; right: -40px; top: 120px; animation-delay: 1.2s; }
+        .aurora .a3 { width: 220px; height: 220px; background: #c7f0f0; left: 46%; bottom: -90px; animation-delay: 2.1s; }
+
+        @keyframes drift {
+            from { transform: translate3d(0, 0, 0) scale(1); }
+            to { transform: translate3d(10px, -12px, 0) scale(1.06); }
+        }
+
+        .glass {
+            background: var(--glass);
+            border: 1px solid var(--line);
+            backdrop-filter: blur(18px) saturate(170%);
+            -webkit-backdrop-filter: blur(18px) saturate(170%);
+            box-shadow: var(--shadow-soft);
+        }
+
+        .glass-soft {
+            background: var(--glass-strong);
+            border: 1px solid rgba(255, 255, 255, 0.88);
+            box-shadow: var(--shadow-card);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .shell {
+            width: min(1180px, calc(100vw - 28px));
+            margin: 16px auto 24px;
+        }
+
+        .topbar {
+            border-radius: 18px;
+            padding: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo {
+            width: 34px;
+            height: 34px;
+            border-radius: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            box-shadow: 0 9px 18px rgba(10, 100, 255, 0.22);
+            border: 1px solid rgba(255, 255, 255, 0.85);
+            background: rgba(255, 255, 255, 0.7);
+        }
+
+        .logo img {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .segmented {
+            display: inline-flex;
+            background: rgba(255, 255, 255, 0.72);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            border-radius: 12px;
+            padding: 3px;
+            gap: 3px;
+        }
+
+        .segmented button {
+            border: 0;
+            border-radius: 9px;
+            padding: 8px 12px;
+            color: var(--ink-2);
+            font-size: 13px;
+            font-weight: 600;
+            background: transparent;
+            transition: all .2s ease;
+        }
+
+        .segmented button.active {
+            background: #fff;
+            color: var(--accent);
+            box-shadow: 0 5px 12px rgba(15, 23, 42, 0.10);
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 14px;
+            margin-top: 14px;
+        }
+
+        .panel {
+            border-radius: var(--radius-xl);
+            padding: 20px;
+        }
+
+        .title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .muted-pill {
+            font-size: 12px;
+            color: var(--ink-3);
+            background: rgba(255, 255, 255, 0.72);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            border-radius: 999px;
+            padding: 5px 10px;
+        }
+
+        .select,
+        .input,
+        .textarea,
+        .file-drop {
+            width: 100%;
+            border-radius: var(--radius-md);
+            border: 1px solid rgba(209, 213, 219, 0.95);
+            background: rgba(255, 255, 255, 0.88);
+            color: var(--ink-1);
+            outline: none;
+            transition: all .2s ease;
+        }
+
+        .select,
+        .input { padding: 11px 12px; }
+
+        .textarea {
+            min-height: 124px;
+            padding: 11px 12px;
+            resize: vertical;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .select:focus,
+        .input:focus,
+        .textarea:focus {
+            border-color: #9ec8ff;
+            box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.14);
+            background: #fff;
+        }
+
+        .btn {
+            border: 0;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all .2s ease;
+            padding: 11px 14px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(160deg, var(--accent-2) 0%, var(--accent) 100%);
+            color: #fff;
+            box-shadow: 0 9px 20px rgba(10, 132, 255, 0.35);
+        }
+
+        .btn-primary:hover { transform: translateY(-1px); }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.88);
+            color: var(--ink-2);
+            border: 1px solid rgba(209, 213, 219, 0.95);
+        }
+
+        .btn-danger {
+            background: #fff1f1;
+            color: #c62828;
+            border: 1px solid #ffc9c9;
+        }
+
+        .toolbar {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .instances {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 12px;
+            margin-top: 14px;
+        }
+
+        .instance-card {
+            border-radius: 18px;
+            padding: 14px;
+            position: relative;
+        }
+
+        .state {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            border-radius: 999px;
+            padding: 4px 9px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .state.run { background: rgba(39, 196, 106, 0.16); color: #0e8f42; }
+        .state.stop { background: rgba(255, 95, 87, 0.14); color: #c62722; }
+
+        .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 999px;
+            background: currentColor;
+        }
+
+        .kv {
+            background: rgba(255, 255, 255, 0.72);
+            border: 1px solid rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 10px;
+            margin: 10px 0 12px;
+        }
+
+        .kv code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 12px;
+            word-break: break-all;
+            color: var(--ink-2);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 3px 6px;
+            border-radius: 8px;
+        }
+
+        .actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+        }
+
+        .key-list {
+            display: grid;
+            gap: 8px;
+            margin-top: 14px;
+        }
+
+        .key-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            border-radius: 14px;
+            padding: 10px 12px;
+        }
+
+        .key-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+
+        .chip {
+            width: 34px;
+            height: 34px;
+            border-radius: 11px;
+            background: linear-gradient(145deg, #e3f0ff, #f7fbff);
+            color: #0a84ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            border: 1px solid rgba(203, 223, 255, 0.9);
+        }
+
+        .file-drop {
+            border-style: dashed;
+            border-width: 2px;
+            border-color: #cfd8e6;
+            padding: 24px 12px;
+            text-align: center;
+            position: relative;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.66);
+        }
+
+        .file-drop:hover {
+            border-color: #9ec8ff;
+            background: rgba(255, 255, 255, 0.82);
+        }
+
+        .log-area {
+            border-radius: 14px;
+            padding: 12px;
+            max-height: 68vh;
+            overflow: auto;
+            background: linear-gradient(180deg, #1a2233 0%, #101829 100%);
+            color: #d5dded;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .log-row {
+            display: grid;
+            grid-template-columns: 86px 1fr;
+            gap: 8px;
+            padding: 4px 6px;
+            border-radius: 8px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 12px;
+        }
+
+        .log-row:hover { background: rgba(255, 255, 255, 0.06); }
+
+        .log-time { color: #7f8eb0; }
+        .log-msg { color: #c7d8ff; word-break: break-all; }
+
+        .empty {
+            text-align: center;
+            color: var(--ink-3);
+            padding: 48px 8px;
+        }
+
+        .label {
+            display: block;
+            font-size: 11px;
+            letter-spacing: .03em;
+            text-transform: uppercase;
+            color: var(--ink-3);
+            margin-bottom: 5px;
+            font-weight: 700;
+        }
+
+        .modal-mask {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.32);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+            padding: 16px;
+        }
+
+        .modal-card {
+            width: min(92vw, 460px);
+            border-radius: 16px;
+            padding: 14px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.95);
+            box-shadow: 0 20px 44px rgba(15, 23, 42, 0.22);
+        }
+
+        .modal-title {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--ink-1);
+        }
+
+        .modal-text {
+            margin-top: 8px;
+            font-size: 14px;
+            color: var(--ink-2);
+            white-space: pre-line;
+            line-height: 1.5;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        @media (max-width: 900px) {
+            .topbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .brand {
+                justify-content: center;
+            }
+
+            .segmented {
+                justify-content: center;
+                width: 100%;
+            }
+
+            .segmented button {
+                flex: 1;
+            }
+
+            .toolbar {
+                grid-template-columns: 1fr;
+            }
+
+            .panel { padding: 14px; }
+            .title-row { flex-direction: column; align-items: flex-start; }
+        }
+    </style>
+</head>
+<body x-data="app()">
+    <div class="aurora">
+        <span class="a1"></span>
+        <span class="a2"></span>
+        <span class="a3"></span>
+    </div>
+
+    <div class="shell">
+        <header class="glass topbar">
+            <div class="brand">
+                <div class="logo"><img src="/logo.svg" alt="Oracle Panel logo"></div>
+                <div>
+                    <div style="font-weight: 700; font-size: 17px; line-height: 1.15;">Oracle Cloud Panel</div>
+                    <div style="font-size: 12px; color: var(--ink-3);">Glassmorphism Control Center</div>
+                </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <nav class="segmented" aria-label="main tabs">
+                    <button @click="view='dashboard'" :class="view==='dashboard' ? 'active' : ''">仪表盘</button>
+                    <button @click="view='keys'" :class="view==='keys' ? 'active' : ''">API Keys</button>
+                    <button @click="view='grab'" :class="view==='grab' ? 'active' : ''">抢机</button>
+                    <button @click="view='history'" :class="view==='history' ? 'active' : ''">历史</button>
+                    <button @click="view='logs'" :class="view==='logs' ? 'active' : ''">日志</button>
+                </nav>
+                <button class="btn btn-secondary" style="padding:8px 12px; font-size:13px;" @click="logout()">退出</button>
+            </div>
+        </header>
+
+        <main class="layout">
+            <section x-cloak x-show="view==='dashboard'" class="glass panel">
+                <div class="title-row">
+                    <div>
+                        <h2 style="margin: 0; font-size: 24px; font-weight: 700;">实例概览</h2>
+                        <p style="margin: 3px 0 0; font-size: 13px; color: var(--ink-3);">查看实例状态并一键更换公网 IP</p>
+                    </div>
+                    <span class="muted-pill">Oracle Infrastructure</span>
+                </div>
+
+                <div class="toolbar">
+                    <select x-model="selectedKey" @change="loadInstances(false)" class="select">
+                        <option value="">选择账号...</option>
+                        <template x-for="key in keys" :key="key.id">
+                            <option :value="key.id" x-text="key.name + ' (' + key.region + ')'">账号</option>
+                        </template>
+                    </select>
+                    <button class="btn btn-primary" @click="loadInstances(true)">刷新列表</button>
+                </div>
+
+                <div class="instances" x-show="instances.length > 0">
+                    <template x-for="inst in instances" :key="inst.id">
+                        <article class="glass-soft instance-card">
+                            <div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">
+                                <div style="min-width:0;">
+                                    <h3 style="margin:0; font-size:16px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" x-text="inst.name"></h3>
+                                    <p style="margin:3px 0 0; color: var(--ink-3); font-size:12px;" x-text="inst.shape"></p>
+                                </div>
+                                <span :class="inst.state === 'RUNNING' ? 'state run' : 'state stop'">
+                                    <span class="dot"></span><span x-text="inst.state"></span>
+                                </span>
+                            </div>
+
+                            <div class="kv">
+                                <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+                                    <span style="font-size:11px; text-transform:uppercase; color:var(--ink-3); font-weight:700;">Public IP</span>
+                                    <button class="btn btn-secondary" style="padding:5px 9px; font-size:12px;" @click="copy(inst.public_ip)">复制</button>
+                                </div>
+                                <div style="margin-top:6px;"><code x-text="inst.public_ip"></code></div>
+                            </div>
+
+                            <div class="kv" x-show="inst.ipv6">
+                                <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+                                    <span style="font-size:11px; text-transform:uppercase; color:var(--ink-3); font-weight:700;">IPv6</span>
+                                    <button class="btn btn-secondary" style="padding:5px 9px; font-size:12px;" @click="copy(inst.ipv6)">复制</button>
+                                </div>
+                                <div style="margin-top:6px;"><code x-text="inst.ipv6"></code></div>
+                            </div>
+
+                            <div class="actions">
+                                <button class="btn btn-primary" @click="changeIp(inst.id)">换 IPv4</button>
+                                <button class="btn btn-primary" style="background:linear-gradient(160deg, #6c5ce7 0%, #a855f7 100%); box-shadow:0 9px 20px rgba(108,92,231,0.35);" x-show="inst.ipv6" @click="changeIpv6(inst.id)">换 IPv6</button>
+                                <button
+                                    class="btn btn-secondary"
+                                    type="button"
+                                    style="cursor:pointer;"
+                                    @click.stop="refreshOneInstance(inst.id)"
+                                    x-text="refreshingMap[inst.id] ? '刷新中...' : '刷新'">
+                                </button>
+                            </div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
+                                <button
+                                    :class="scheduleMap[inst.id]?.enabled ? 'btn btn-primary' : 'btn btn-secondary'"
+                                    type="button"
+                                    style="cursor:pointer; padding:8px 10px; font-size:12px;"
+                                    @click.stop="configureMonthlySchedule(inst)">
+                                    定时换IP
+                                </button>
+                                <button
+                                    class="btn btn-secondary"
+                                    type="button"
+                                    style="cursor:pointer; padding:8px 10px; font-size:12px;"
+                                    @click.stop="queryTraffic(inst.id)"
+                                    x-text="trafficLoading[inst.id] ? '查询中...' : '本月流量'">
+                                </button>
+                            </div>
+                            <div style="margin-top:8px; font-size:12px; color:var(--ink-3);" x-show="scheduleMap[inst.id]?.enabled">
+                                下次自动换IP: <span x-text="formatScheduleTime(scheduleMap[inst.id]?.nextRunAt)"></span>
+                            </div>
+                        </article>
+                    </template>
+                </div>
+
+                <div class="empty" x-show="instances.length === 0 && !loading">
+                    <div style="font-size: 14px;">请选择账号后点击刷新</div>
+                    <div style="font-size: 12px; margin-top:4px;">暂无实例数据</div>
+                </div>
+
+                <div class="empty" x-show="loading" style="font-weight:600; color:var(--accent);">正在连接 Oracle Cloud...</div>
+            </section>
+
+            <section x-cloak x-show="view==='keys'" class="glass panel">
+                <div class="title-row">
+                    <div>
+                        <h2 style="margin:0; font-size:24px; font-weight:700;">API Keys 管理</h2>
+                        <p style="margin:3px 0 0; font-size:13px; color:var(--ink-3);">录入 Oracle Config 与私钥后自动验证连接</p>
+                    </div>
+                    <span class="muted-pill">Secure Setup</span>
+                </div>
+
+                <div class="glass-soft" style="padding:12px; border-radius:14px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; gap:10px;">
+                    <div>
+                        <div style="font-size:13px; font-weight:700;">Telegram 通知</div>
+                        <div style="font-size:12px; color:var(--ink-3);" x-text="telegramConfigured ? '状态：已配置' : '状态：未配置'"></div>
+                    </div>
+                </div>
+
+                <div class="glass-soft" style="padding:12px; border-radius:14px; margin-bottom:10px;">
+                    <div style="font-size:13px; font-weight:700; margin-bottom:2px;">后台密码</div>
+                    <div style="font-size:12px; color:var(--ink-3); margin-bottom:10px;" x-text="hasCustomPassword ? '状态：已自定义' : '状态：默认密码（建议立即修改）'"></div>
+                    <div style="display:grid; grid-template-columns:1fr; gap:8px;">
+                        <div>
+                            <label class="label">当前密码</label>
+                            <input class="input" type="password" x-model="passwordForm.currentPassword" placeholder="请输入当前密码">
+                        </div>
+                        <div>
+                            <label class="label">新密码</label>
+                            <input class="input" type="password" x-model="passwordForm.newPassword" placeholder="至少 8 位">
+                        </div>
+                        <div>
+                            <label class="label">确认新密码</label>
+                            <input class="input" type="password" x-model="passwordForm.confirmPassword" placeholder="再次输入新密码">
+                        </div>
+                        <div>
+                            <button
+                                class="btn btn-primary"
+                                type="button"
+                                style="padding:8px 12px; font-size:12px;"
+                                :disabled="passwordChanging"
+                                @click="changePassword()"
+                                x-text="passwordChanging ? '修改中...' : '修改密码'">
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="glass-soft" style="padding:12px; border-radius:14px; margin-bottom:10px;">
+                    <div style="display:grid; grid-template-columns:1fr; gap:8px;">
+                        <div>
+                            <label class="label">Telegram Bot Token</label>
+                            <input class="input" type="text" x-model="notifyForm.botToken" placeholder="例如: 123456:ABCDEF...">
+                        </div>
+                        <div>
+                            <label class="label">Telegram Chat ID (多个逗号分隔)</label>
+                            <input class="input" type="text" x-model="notifyForm.chatIds" placeholder="例如: 123456789,987654321">
+                        </div>
+                        <div style="display:flex; gap:8px;">
+                            <button
+                                class="btn btn-primary"
+                                type="button"
+                                style="padding:8px 12px; font-size:12px;"
+                                :disabled="notifySaving"
+                                @click="saveNotifyConfig()"
+                                x-text="notifySaving ? '保存中...' : '保存配置'">
+                            </button>
+                            <button
+                                class="btn btn-secondary"
+                                type="button"
+                                style="padding:8px 12px; font-size:12px;"
+                                :disabled="notifyTesting"
+                                @click="sendTelegramTest()"
+                                x-text="notifyTesting ? '发送中...' : '发送测试通知'">
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <form @submit.prevent="uploadKey" class="glass-soft" style="padding:14px; border-radius: 16px;">
+                    <div style="margin-bottom: 10px;">
+                        <label class="label">快速导入 (Config)</label>
+                        <textarea x-model="configText" @input="parseConfig()" class="textarea" placeholder="[DEFAULT]\nuser=ocid1.user...\nfingerprint=xx:xx:...\ntenancy=ocid1.tenancy...\nregion=ap-tokyo-1"></textarea>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-bottom:10px;">
+                        <div>
+                            <label class="label">备注名称</label>
+                            <input class="input" x-model="form.name" type="text" placeholder="如: 东京账号">
+                        </div>
+                        <div>
+                            <label class="label">Region</label>
+                            <input class="input" x-model="form.region" type="text" placeholder="如: ap-tokyo-1">
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 10px;">
+                        <label class="label">User OCID</label>
+                        <input class="input" x-model="form.user" type="text">
+                    </div>
+
+                    <div style="margin-bottom: 10px;">
+                        <label class="label">Fingerprint</label>
+                        <input class="input" x-model="form.fingerprint" type="text">
+                    </div>
+
+                    <div style="margin-bottom: 10px;">
+                        <label class="label">Tenancy OCID</label>
+                        <input class="input" x-model="form.tenancy" type="text">
+                    </div>
+
+                    <label class="file-drop" style="display:block; margin-bottom: 12px;">
+                        <input type="file" @change="file = $event.target.files[0]" style="position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer;">
+                        <div style="font-size:13px; color:var(--ink-2); font-weight:600;" x-text="file ? file.name : '点击上传 .pem 私钥文件'"></div>
+                        <div style="font-size:12px; color:var(--ink-3); margin-top:3px;">支持从 OCI Console 下载的 API Key</div>
+                    </label>
+
+                    <button type="submit" class="btn btn-primary" style="width:100%;">保存并测试连接</button>
+                </form>
+
+                <div class="key-list">
+                    <template x-for="key in keys" :key="key.id">
+                        <div class="glass-soft key-item">
+                            <div class="key-left">
+                                <div class="chip">K</div>
+                                <div style="min-width:0;">
+                                    <div style="font-size:14px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" x-text="key.name"></div>
+                                    <div style="font-size:12px; color:var(--ink-3);" x-text="key.region"></div>
+                                </div>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <div style="font-size:12px; color:#0e8f42; font-weight:700;">已连接</div>
+                                <button class="btn btn-danger" style="padding:6px 10px; font-size:12px;" @click="deleteKey(key.id, key.name)">删除</button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </section>
+
+            <!-- Grab (抢机) -->
+            <section x-cloak x-show="view==='grab'" class="glass panel">
+                <div class="title-row">
+                    <div>
+                        <h2 style="margin:0; font-size:24px; font-weight:700;">抢机任务</h2>
+                        <p style="margin:3px 0 0; font-size:13px; color:var(--ink-3);">自动循环尝试创建 Oracle 实例</p>
+                    </div>
+                    <span class="muted-pill">Auto Grab</span>
+                </div>
+
+                <!-- New task form -->
+                <div class="glass-soft" style="padding:14px; border-radius:16px; margin-bottom:14px;">
+                    <div style="font-size:13px; font-weight:700; margin-bottom:10px;">新建抢机任务</div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
+                        <div>
+                            <label class="label">选择账号</label>
+                            <select class="select" x-model="grabForm.keyId" @change="loadGrabOptions()">
+                                <option value="">选择账号...</option>
+                                <template x-for="key in keys" :key="key.id">
+                                    <option :value="key.id" x-text="key.name + ' (' + key.region + ')'"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="label">实例名称</label>
+                            <input class="input" x-model="grabForm.name" placeholder="如: my-arm-instance">
+                        </div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:8px;">
+                        <div>
+                            <label class="label">规格 (Shape)</label>
+                            <select class="select" x-model="grabForm.shape">
+                                <option value="VM.Standard.A1.Flex">VM.Standard.A1.Flex (ARM 免费)</option>
+                                <option value="VM.Standard.E2.1.Micro">VM.Standard.E2.1.Micro (AMD 免费)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="label">OCPU 数</label>
+                            <input class="input" type="number" x-model.number="grabForm.ocpus" min="1" max="80">
+                        </div>
+                        <div>
+                            <label class="label">内存 (GB)</label>
+                            <input class="input" type="number" x-model.number="grabForm.memoryGb" min="1" max="512">
+                        </div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
+                        <div>
+                            <label class="label">可用域</label>
+                            <select class="select" x-model="grabForm.availabilityDomain">
+                                <option value="">请先选择账号</option>
+                                <template x-for="ad in grabOptions.ads" :key="ad">
+                                    <option :value="ad" x-text="ad"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="label">子网</label>
+                            <select class="select" x-model="grabForm.subnetId">
+                                <option value="">请先选择账号</option>
+                                <template x-for="s in grabOptions.subnets" :key="s.id">
+                                    <option :value="s.id" x-text="s.vcnName + ' / ' + s.name"></option>
+                                </template>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        <label class="label">镜像</label>
+                        <select class="select" x-model="grabForm.imageId">
+                            <option value="">请先选择账号</option>
+                            <template x-for="img in grabOptions.images" :key="img.id">
+                                <option :value="img.id" x-text="img.name"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr auto; gap:8px; margin-bottom:8px;">
+                        <div>
+                            <label class="label">SSH 公钥</label>
+                            <input class="input" x-model="grabForm.sshPublicKey" placeholder="ssh-rsa AAAA... (可选)">
+                        </div>
+                        <div>
+                            <label class="label">Root 密码</label>
+                            <input class="input" type="text" x-model="grabForm.rootPassword" placeholder="留空则不设置">
+                        </div>
+                        <div>
+                            <label class="label">间隔 (秒)</label>
+                            <input class="input" type="number" x-model.number="grabForm.intervalSeconds" min="10" max="3600" style="width:100px;">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" style="width:100%;" @click="createGrabTask()" :disabled="grabCreating" x-text="grabCreating ? '创建中...' : '开始抢机'"></button>
+                </div>
+
+                <!-- Task list -->
+                <div class="key-list">
+                    <template x-for="task in grabTasks" :key="task.id">
+                        <div class="glass-soft" style="padding:12px; border-radius:14px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:6px;">
+                                <div style="min-width:0;">
+                                    <div style="font-size:14px; font-weight:700;" x-text="'#' + task.id + ' ' + task.name + ' (' + task.shape + ')'"></div>
+                                    <div style="font-size:12px; color:var(--ink-3);" x-text="(task.key_name || '') + ' · ' + task.ocpus + ' OCPU · ' + task.memory_gb + ' GB'"></div>
+                                </div>
+                                <span :class="task.status === 'running' ? 'state run' : task.status === 'success' ? 'state run' : 'state stop'">
+                                    <span class="dot"></span><span x-text="task.status"></span>
+                                </span>
+                            </div>
+                            <div style="font-size:12px; color:var(--ink-3); margin-bottom:8px;">
+                                尝试: <span x-text="task.attempt_count"></span> 次
+                                <span x-show="task.last_error"> · 最近错误: <span x-text="(task.last_error||'').substring(0,80)"></span></span>
+                            </div>
+                            <div style="display:flex; gap:8px;">
+                                <button x-show="task.status==='running'" class="btn btn-secondary" style="padding:6px 10px; font-size:12px;" @click="pauseGrabTask(task.id)">暂停</button>
+                                <button x-show="task.status==='paused'" class="btn btn-primary" style="padding:6px 10px; font-size:12px;" @click="resumeGrabTask(task.id)">恢复</button>
+                                <button class="btn btn-danger" style="padding:6px 10px; font-size:12px;" @click="deleteGrabTask(task.id)">删除</button>
+                            </div>
+                        </div>
+                    </template>
+                    <div x-show="grabTasks.length === 0" class="empty" style="padding:24px;">暂无抢机任务</div>
+                </div>
+            </section>
+
+            <!-- History (IP历史 + 访问日志) -->
+            <section x-cloak x-show="view==='history'" class="glass panel">
+                <div class="title-row">
+                    <div>
+                        <h2 style="margin:0; font-size:24px; font-weight:700;">历史记录</h2>
+                        <p style="margin:3px 0 0; font-size:13px; color:var(--ink-3);">IP 更换记录与面板访问日志</p>
+                    </div>
+                </div>
+
+                <div class="segmented" style="margin-bottom:14px;">
+                    <button @click="historyTab='ip'" :class="historyTab==='ip' ? 'active' : ''">IP 更换记录</button>
+                    <button @click="historyTab='access'" :class="historyTab==='access' ? 'active' : ''">访问日志</button>
+                </div>
+
+                <!-- IP History -->
+                <div x-show="historyTab==='ip'">
+                    <div style="overflow-x:auto;">
+                        <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                            <thead>
+                                <tr style="text-align:left; color:var(--ink-3); font-size:11px; text-transform:uppercase;">
+                                    <th style="padding:8px;">时间</th>
+                                    <th style="padding:8px;">实例</th>
+                                    <th style="padding:8px;">类型</th>
+                                    <th style="padding:8px;">旧 IP</th>
+                                    <th style="padding:8px;">新 IP</th>
+                                    <th style="padding:8px;">来源</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="h in ipHistory" :key="h.id">
+                                    <tr style="border-top:1px solid rgba(0,0,0,0.06);">
+                                        <td style="padding:8px; white-space:nowrap;" x-text="new Date(h.created_at+'Z').toLocaleString()"></td>
+                                        <td style="padding:8px; max-width:120px; overflow:hidden; text-overflow:ellipsis;" x-text="h.instance_name || h.instance_id?.substring(h.instance_id.length-12)"></td>
+                                        <td style="padding:8px;"><code x-text="h.ip_type" style="font-size:11px;"></code></td>
+                                        <td style="padding:8px;"><code x-text="h.old_ip || '-'" style="font-size:12px;"></code></td>
+                                        <td style="padding:8px;"><code x-text="h.new_ip" style="font-size:12px; color:var(--accent);"></code></td>
+                                        <td style="padding:8px;" x-text="h.source === 'schedule' ? '定时' : '手动'"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div x-show="ipHistory.length === 0" class="empty" style="padding:24px;">暂无 IP 更换记录</div>
+                </div>
+
+                <!-- Access Logs -->
+                <div x-show="historyTab==='access'">
+                    <div style="overflow-x:auto;">
+                        <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                            <thead>
+                                <tr style="text-align:left; color:var(--ink-3); font-size:11px; text-transform:uppercase;">
+                                    <th style="padding:8px;">时间</th>
+                                    <th style="padding:8px;">操作</th>
+                                    <th style="padding:8px;">详情</th>
+                                    <th style="padding:8px;">IP</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="a in accessLogs" :key="a.id">
+                                    <tr style="border-top:1px solid rgba(0,0,0,0.06);">
+                                        <td style="padding:8px; white-space:nowrap;" x-text="new Date(a.created_at+'Z').toLocaleString()"></td>
+                                        <td style="padding:8px;"><code x-text="a.action" style="font-size:11px;"></code></td>
+                                        <td style="padding:8px;" x-text="a.detail"></td>
+                                        <td style="padding:8px;"><code x-text="a.ip" style="font-size:12px;"></code></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div x-show="accessLogs.length === 0" class="empty" style="padding:24px;">暂无访问日志</div>
+                </div>
+            </section>
+
+            <section x-cloak x-show="view==='logs'" class="glass panel">
+                <div class="title-row">
+                    <div>
+                        <h2 style="margin:0; font-size:24px; font-weight:700;">运行日志</h2>
+                        <p style="margin:3px 0 0; font-size:13px; color:var(--ink-3);">实时推送 + 持久化存储，刷新不丢失</p>
+                    </div>
+                    <button class="btn btn-secondary" style="padding:8px 12px; font-size:12px;" @click="loadPersistentLogs()">加载历史</button>
+                </div>
+
+                <div id="log-container" class="log-area">
+                    <template x-for="log in logs">
+                        <div class="log-row">
+                            <span class="log-time" x-text="log.time"></span>
+                            <span class="log-msg" x-text="log.msg"></span>
+                        </div>
+                    </template>
+                    <div x-show="logs.length === 0" style="text-align:center; color:#95a3bf; padding:34px 0; font-size:13px;">暂无日志</div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div class="modal-mask" x-cloak x-show="modal.open" @click.self="modalCancel()">
+        <div class="modal-card glass-soft">
+            <h3 class="modal-title" x-text="modal.title || '提示'"></h3>
+            <div class="modal-text" x-text="modal.message"></div>
+            <input
+                x-show="modal.mode === 'prompt'"
+                x-model="modal.input"
+                class="input"
+                style="margin-top:10px;"
+                type="text"
+                @keydown.enter.prevent="modalOk()"
+            >
+            <div class="modal-actions">
+                <button class="btn btn-secondary" x-show="modal.mode !== 'alert'" @click="modalCancel()">取消</button>
+                <button class="btn btn-primary" @click="modalOk()" x-text="modal.okText || '确定'"></button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function app() {
+            return {
+                view: 'dashboard',
+                keys: [],
+                instances: [],
+                selectedKey: '',
+                loading: false,
+                refreshingMap: {},
+                scheduleMap: {},
+                logs: [],
+                telegramConfigured: false,
+                hasCustomPassword: false,
+                notifyTesting: false,
+                notifySaving: false,
+                notifyForm: { botToken: '', chatIds: '' },
+                passwordChanging: false,
+                passwordForm: { currentPassword: '', newPassword: '', confirmPassword: '' },
+                configText: '',
+                form: { name: '', user: '', fingerprint: '', tenancy: '', region: '' },
+                file: null,
+                socket: null,
+                trafficLoading: {},
+                historyTab: 'ip',
+                ipHistory: [],
+                accessLogs: [],
+                grabTasks: [],
+                grabCreating: false,
+                grabOptions: { ads: [], subnets: [], images: [] },
+                grabForm: { keyId: '', name: '', shape: 'VM.Standard.A1.Flex', ocpus: 4, memoryGb: 24, imageId: '', subnetId: '', availabilityDomain: '', sshPublicKey: '', rootPassword: '', intervalSeconds: 60 },
+                modal: {
+                    open: false,
+                    mode: 'alert',
+                    title: '提示',
+                    message: '',
+                    input: '',
+                    okText: '确定',
+                    resolve: null
+                },
+
+                init() {
+                    this.loadAuthStatus();
+                    this.loadNotifyConfig();
+                    this.loadKeys();
+                    this.initSocket();
+                    this.loadPersistentLogs();
+                    this.loadIpHistory();
+                    this.loadAccessLogs();
+                    this.loadGrabTasks();
+                },
+
+                async apiFetch(url, options = {}) {
+                    const res = await fetch(url, { credentials: 'same-origin', ...options });
+                    if (res.status === 401) {
+                        location.href = '/login.html';
+                        throw new Error('UNAUTHORIZED');
+                    }
+                    return res;
+                },
+
+                openModal({ mode = 'alert', title = '提示', message = '', input = '', okText = '确定' }) {
+                    this.modal.mode = mode;
+                    this.modal.title = title;
+                    this.modal.message = message;
+                    this.modal.input = input;
+                    this.modal.okText = okText;
+                    this.modal.open = true;
+                    return new Promise(resolve => {
+                        this.modal.resolve = resolve;
+                    });
+                },
+
+                modalCancel() {
+                    if (!this.modal.open) return;
+                    const resolve = this.modal.resolve;
+                    this.modal.open = false;
+                    this.modal.resolve = null;
+                    if (resolve) resolve({ ok: false, value: null });
+                },
+
+                modalOk() {
+                    if (!this.modal.open) return;
+                    const resolve = this.modal.resolve;
+                    const value = this.modal.mode === 'prompt' ? this.modal.input : true;
+                    this.modal.open = false;
+                    this.modal.resolve = null;
+                    if (resolve) resolve({ ok: true, value });
+                },
+
+                async uiAlert(message, title = '提示') {
+                    await this.openModal({ mode: 'alert', title, message, okText: '确定' });
+                },
+
+                async uiConfirm(message, title = '确认') {
+                    const result = await this.openModal({ mode: 'confirm', title, message, okText: '确定' });
+                    return result.ok;
+                },
+
+                async uiPrompt(message, defaultValue = '', title = '输入') {
+                    const result = await this.openModal({
+                        mode: 'prompt',
+                        title,
+                        message,
+                        input: defaultValue,
+                        okText: '保存'
+                    });
+                    return result.ok ? result.value : null;
+                },
+
+                parseConfig() {
+                    const txt = this.configText;
+                    const getVal = (key) => {
+                        const match = txt.match(new RegExp(`${key}\\s*=\\s*(.+)`));
+                        return match ? match[1].trim() : '';
+                    };
+
+                    if (getVal('user')) this.form.user = getVal('user');
+                    if (getVal('fingerprint')) this.form.fingerprint = getVal('fingerprint');
+                    if (getVal('tenancy')) this.form.tenancy = getVal('tenancy');
+                    if (getVal('region')) this.form.region = getVal('region');
+                },
+
+                initSocket() {
+                    this.socket = io();
+                    this.socket.on('log', (msg) => {
+                        this.logs.push({ time: new Date().toLocaleTimeString(), msg });
+                        this.$nextTick(() => {
+                            const container = document.getElementById('log-container');
+                            if (container) container.scrollTop = container.scrollHeight;
+                        });
+                    });
+                },
+
+                async loadKeys() {
+                    const res = await this.apiFetch('/api/keys');
+                    this.keys = await res.json();
+                    if (this.keys.length === 0) {
+                        this.selectedKey = '';
+                        this.instances = [];
+                        this.scheduleMap = {};
+                        return;
+                    }
+                    const selectedExists = this.keys.some(k => String(k.id) === String(this.selectedKey));
+                    if (!selectedExists) {
+                        this.selectedKey = this.keys[0].id;
+                    }
+                    this.loadInstances(false);
+                },
+
+                async loadAuthStatus() {
+                    try {
+                        const res = await this.apiFetch('/api/auth/status');
+                        const data = await res.json();
+                        this.telegramConfigured = !!data.telegramConfigured;
+                        this.hasCustomPassword = !!data.hasCustomPassword;
+                    } catch (_) {}
+                },
+
+                async loadNotifyConfig() {
+                    try {
+                        const res = await this.apiFetch('/api/notify/config');
+                        const data = await res.json();
+                        if (!data.ok) return;
+                        this.notifyForm.botToken = data.botToken || '';
+                        this.notifyForm.chatIds = data.chatIds || '';
+                    } catch (_) {}
+                },
+
+                async loadInstances(forceRefresh = false) {
+                    if (!this.selectedKey) return;
+                    this.loading = true;
+                    this.instances = [];
+                    try {
+                        const suffix = forceRefresh ? '?refresh=1' : '';
+                        const res = await this.apiFetch(`/api/instances/${this.selectedKey}${suffix}`);
+                        const data = await res.json();
+                        if (data.ok) {
+                            this.instances = data.instances;
+                            await this.loadSchedules();
+                        } else {
+                            await this.uiAlert('加载失败: ' + data.error);
+                        }
+                    } catch (e) {
+                        await this.uiAlert('网络错误');
+                    }
+                    this.loading = false;
+                },
+
+                async refreshOneInstance(instanceId) {
+                    if (!this.selectedKey) return;
+                    this.refreshingMap[instanceId] = true;
+                    try {
+                        const res = await this.apiFetch(`/api/instance/${this.selectedKey}/${instanceId}`);
+                        const data = await res.json();
+                        if (!data.ok) {
+                            await this.uiAlert('刷新失败: ' + data.error);
+                            return;
+                        }
+                        this.instances = this.instances.map(inst =>
+                            inst.id === instanceId ? data.instance : inst
+                        );
+                    } catch (e) {
+                        await this.uiAlert('刷新失败: 网络错误');
+                    } finally {
+                        this.refreshingMap[instanceId] = false;
+                    }
+                },
+
+                async loadSchedules() {
+                    if (!this.selectedKey) return;
+                    try {
+                        const res = await this.apiFetch(`/api/schedules/${this.selectedKey}`);
+                        const data = await res.json();
+                        if (!data.ok || !Array.isArray(data.items)) return;
+                        const map = {};
+                        data.items.forEach(item => {
+                            map[item.instanceId] = item;
+                        });
+                        this.scheduleMap = map;
+                    } catch (_) {}
+                },
+
+                formatScheduleTime(iso) {
+                    if (!iso) return '-';
+                    try {
+                        const d = new Date(iso);
+                        if (Number.isNaN(d.getTime())) return '-';
+                        return d.toLocaleString();
+                    } catch (_) {
+                        return '-';
+                    }
+                },
+
+                async configureMonthlySchedule(inst) {
+                    const current = this.scheduleMap[inst.id];
+                    if (current && current.enabled) {
+                        const off = await this.uiConfirm(`实例 ${inst.name} 已开启月度定时换IP。\n是否关闭？`);
+                        if (!off) return;
+                        const res = await this.apiFetch('/api/schedule/update', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                keyId: this.selectedKey,
+                                instanceId: inst.id,
+                                enabled: false,
+                                time: current.time || '03:00'
+                            })
+                        });
+                        const data = await res.json();
+                        if (!data.ok) return this.uiAlert('保存失败: ' + (data.error || '未知错误'));
+                        await this.loadSchedules();
+                        return;
+                    }
+
+                    const input = await this.uiPrompt(
+                        `为实例 ${inst.name} 设置每月随机日自动换IP时间（HH:MM）`,
+                        current?.time || '03:00',
+                        '设置定时'
+                    );
+                    if (input === null) return;
+                    const time = String(input).trim().replace('：', ':');
+                    if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(time)) {
+                        return this.uiAlert('时间格式错误，请使用 HH:MM，例如 03:00');
+                    }
+                    const res = await this.apiFetch('/api/schedule/update', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            keyId: this.selectedKey,
+                            instanceId: inst.id,
+                            enabled: true,
+                            time
+                        })
+                    });
+                    const data = await res.json();
+                    if (!data.ok) return this.uiAlert('保存失败: ' + (data.error || '未知错误'));
+                    await this.loadSchedules();
+                    const nextRun = this.scheduleMap[inst.id]?.nextRunAt;
+                    await this.uiAlert(`月度定时已开启，下次执行: ${this.formatScheduleTime(nextRun)}`);
+                },
+
+                async uploadKey() {
+                    if (!this.file) return this.uiAlert('请上传 .pem 文件');
+                    const formData = new FormData();
+                    Object.keys(this.form).forEach(k => formData.append(k, this.form[k]));
+                    formData.append('keyFile', this.file);
+
+                    const res = await this.apiFetch('/api/keys', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await res.json();
+                    if (data.ok) {
+                        await this.uiAlert('添加成功！');
+                        this.loadKeys();
+                        this.view = 'dashboard';
+                    } else {
+                        await this.uiAlert('失败: ' + data.error);
+                    }
+                },
+
+                async deleteKey(id, name) {
+                    const ok = await this.uiConfirm(`确定删除账号 ${name} 吗？\n会同时删除服务器上对应的私钥文件。`);
+                    if (!ok) return;
+                    const res = await this.apiFetch(`/api/keys/${id}`, { method: 'DELETE' });
+                    const data = await res.json();
+                    if (!data.ok) {
+                        await this.uiAlert('删除失败: ' + (data.error || '未知错误'));
+                        return;
+                    }
+                    if (String(this.selectedKey) === String(id)) {
+                        this.selectedKey = '';
+                    }
+                    await this.loadKeys();
+                },
+
+                async changeIp(instanceId) {
+                    const ok = await this.uiConfirm('确定要为这台机器更换公网 IPv4 吗？这可能需要几分钟。');
+                    if (!ok) return;
+
+                    try {
+                        const res = await this.apiFetch('/api/change-ip', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ keyId: this.selectedKey, instanceId })
+                        });
+                        const data = await res.json();
+                        if (data.ok) {
+                            this.instances = this.instances.map(inst =>
+                                inst.id === instanceId ? { ...inst, public_ip: data.newIp } : inst
+                            );
+                            await this.uiAlert('IPv4 更换成功！新地址: ' + data.newIp);
+                        } else {
+                            await this.uiAlert('换 IPv4 失败: ' + (data.error || '未知错误'));
+                        }
+                    } catch (e) {
+                        await this.uiAlert('换 IPv4 失败: 网络错误');
+                    }
+                },
+
+                async changeIpv6(instanceId) {
+                    const ok = await this.uiConfirm('确定要为这台机器更换 IPv6 地址吗？这可能需要几分钟。');
+                    if (!ok) return;
+
+                    try {
+                        const res = await this.apiFetch('/api/change-ipv6', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ keyId: this.selectedKey, instanceId })
+                        });
+                        const data = await res.json();
+                        if (data.ok) {
+                            this.instances = this.instances.map(inst =>
+                                inst.id === instanceId ? { ...inst, ipv6: data.newIpv6 } : inst
+                            );
+                            await this.uiAlert('IPv6 更换成功！新地址: ' + data.newIpv6);
+                        } else {
+                            await this.uiAlert('换 IPv6 失败: ' + (data.error || '未知错误'));
+                        }
+                    } catch (e) {
+                        await this.uiAlert('换 IPv6 失败: 网络错误');
+                    }
+                },
+
+                async queryTraffic(instanceId) {
+                    this.trafficLoading[instanceId] = true;
+                    try {
+                        const res = await this.apiFetch(`/api/traffic/${this.selectedKey}/${instanceId}`);
+                        const data = await res.json();
+                        if (!data.ok) {
+                            await this.uiAlert('查询失败: ' + (data.error || '未知错误'));
+                            return;
+                        }
+                        const fmt = (bytes) => {
+                            if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(2) + ' GB';
+                            if (bytes >= 1048576) return (bytes / 1048576).toFixed(2) + ' MB';
+                            if (bytes >= 1024) return (bytes / 1024).toFixed(2) + ' KB';
+                            return bytes + ' B';
+                        };
+                        const total = data.bytesIn + data.bytesOut;
+                        const msg = `📊 ${data.year}年${data.month}月流量统计\n\n↓ 入站: ${fmt(data.bytesIn)}\n↑ 出站: ${fmt(data.bytesOut)}\n合计: ${fmt(total)}`;
+                        await this.uiAlert(msg, '实例流量');
+                    } catch (e) {
+                        await this.uiAlert('查询失败: 网络错误');
+                    } finally {
+                        this.trafficLoading[instanceId] = false;
+                    }
+                },
+
+                async logout() {
+                    try {
+                        await this.apiFetch('/api/logout', { method: 'POST' });
+                    } catch (_) {}
+                    location.href = '/login.html';
+                },
+
+                async sendTelegramTest() {
+                    this.notifyTesting = true;
+                    try {
+                        const res = await this.apiFetch('/api/notify/test', { method: 'POST' });
+                        const data = await res.json();
+                        if (!data.ok) {
+                            await this.uiAlert('发送失败: ' + (data.error || '未知错误'));
+                            return;
+                        }
+                        await this.uiAlert('测试通知已发送');
+                    } catch (e) {
+                        await this.uiAlert('发送失败: 网络错误');
+                    } finally {
+                        this.notifyTesting = false;
+                    }
+                },
+
+                async saveNotifyConfig() {
+                    this.notifySaving = true;
+                    try {
+                        const res = await this.apiFetch('/api/notify/config', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                botToken: this.notifyForm.botToken,
+                                chatIds: this.notifyForm.chatIds
+                            })
+                        });
+                        const data = await res.json();
+                        if (!data.ok) {
+                            await this.uiAlert('保存失败');
+                            return;
+                        }
+                        this.telegramConfigured = !!data.telegramConfigured;
+                        await this.uiAlert('配置已保存');
+                    } catch (_) {
+                        await this.uiAlert('保存失败: 网络错误');
+                    } finally {
+                        this.notifySaving = false;
+                    }
+                },
+
+                async changePassword() {
+                    const f = this.passwordForm;
+                    if (!f.currentPassword || !f.newPassword || !f.confirmPassword) {
+                        return this.uiAlert('请完整填写密码字段');
+                    }
+                    if (f.newPassword.length < 8) {
+                        return this.uiAlert('新密码至少 8 位');
+                    }
+                    if (f.newPassword !== f.confirmPassword) {
+                        return this.uiAlert('两次输入的新密码不一致');
+                    }
+                    this.passwordChanging = true;
+                    try {
+                        const res = await this.apiFetch('/api/password/change', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                currentPassword: f.currentPassword,
+                                newPassword: f.newPassword
+                            })
+                        });
+                        const data = await res.json();
+                        if (!data.ok) {
+                            await this.uiAlert('修改失败: ' + (data.error || '未知错误'));
+                            return;
+                        }
+                        this.passwordForm = { currentPassword: '', newPassword: '', confirmPassword: '' };
+                        this.hasCustomPassword = true;
+                        await this.uiAlert('密码修改成功');
+                    } catch (_) {
+                        await this.uiAlert('修改失败: 网络错误');
+                    } finally {
+                        this.passwordChanging = false;
+                    }
+                },
+
+                async copy(text) {
+                    try {
+                        if (navigator.clipboard && window.isSecureContext) {
+                            await navigator.clipboard.writeText(text);
+                            await this.uiAlert('已复制');
+                            return;
+                        }
+                        const textarea = document.createElement('textarea');
+                        textarea.value = text;
+                        textarea.setAttribute('readonly', '');
+                        textarea.style.position = 'fixed';
+                        textarea.style.opacity = '0';
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        textarea.setSelectionRange(0, textarea.value.length);
+                        const ok = document.execCommand('copy');
+                        document.body.removeChild(textarea);
+                        if (!ok) throw new Error('copy command failed');
+                        await this.uiAlert('已复制');
+                    } catch (_) {
+                        await this.uiAlert('复制失败，请手动复制');
+                    }
+                },
+
+                // === Persistent Logs ===
+                async loadPersistentLogs() {
+                    try {
+                        const res = await this.apiFetch('/api/logs?limit=200');
+                        const data = await res.json();
+                        if (!data.ok) return;
+                        this.logs = data.items.reverse().map(l => ({
+                            time: new Date(l.created_at + 'Z').toLocaleTimeString(),
+                            msg: l.message
+                        }));
+                    } catch (_) {}
+                },
+
+                // === IP History ===
+                async loadIpHistory() {
+                    try {
+                        const res = await this.apiFetch('/api/ip-history');
+                        const data = await res.json();
+                        if (data.ok) this.ipHistory = data.items;
+                    } catch (_) {}
+                },
+
+                // === Access Logs ===
+                async loadAccessLogs() {
+                    try {
+                        const res = await this.apiFetch('/api/access-logs');
+                        const data = await res.json();
+                        if (data.ok) this.accessLogs = data.items;
+                    } catch (_) {}
+                },
+
+                // === Grab Tasks ===
+                async loadGrabTasks() {
+                    try {
+                        const res = await this.apiFetch('/api/grab/tasks');
+                        const data = await res.json();
+                        if (data.ok) this.grabTasks = data.items;
+                    } catch (_) {}
+                },
+
+                async loadGrabOptions() {
+                    if (!this.grabForm.keyId) return;
+                    this.grabOptions = { ads: [], subnets: [], images: [] };
+                    try {
+                        const res = await this.apiFetch(`/api/grab/options/${this.grabForm.keyId}`);
+                        const data = await res.json();
+                        if (!data.ok) { await this.uiAlert('加载选项失败: ' + data.error); return; }
+                        this.grabOptions.ads = data.availabilityDomains || [];
+                        this.grabOptions.subnets = data.subnets || [];
+                        this.grabOptions.images = data.images || [];
+                        if (this.grabOptions.ads.length > 0) this.grabForm.availabilityDomain = this.grabOptions.ads[0];
+                        if (this.grabOptions.subnets.length > 0) this.grabForm.subnetId = this.grabOptions.subnets[0].id;
+                    } catch (_) {
+                        await this.uiAlert('加载选项失败: 网络错误');
+                    }
+                },
+
+                async createGrabTask() {
+                    if (!this.grabForm.keyId || !this.grabForm.shape || !this.grabForm.imageId || !this.grabForm.subnetId || !this.grabForm.availabilityDomain) {
+                        return this.uiAlert('请填写完整的抢机配置');
+                    }
+                    this.grabCreating = true;
+                    try {
+                        const res = await this.apiFetch('/api/grab/tasks', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(this.grabForm)
+                        });
+                        const data = await res.json();
+                        if (data.ok) {
+                            await this.uiAlert('抢机任务已创建！任务 #' + data.id);
+                            await this.loadGrabTasks();
+                        } else {
+                            await this.uiAlert('创建失败: ' + (data.error || '未知错误'));
+                        }
+                    } catch (_) {
+                        await this.uiAlert('创建失败: 网络错误');
+                    } finally {
+                        this.grabCreating = false;
+                    }
+                },
+
+                async pauseGrabTask(id) {
+                    await this.apiFetch(`/api/grab/tasks/${id}/pause`, { method: 'POST' });
+                    await this.loadGrabTasks();
+                },
+
+                async resumeGrabTask(id) {
+                    await this.apiFetch(`/api/grab/tasks/${id}/resume`, { method: 'POST' });
+                    await this.loadGrabTasks();
+                },
+
+                async deleteGrabTask(id) {
+                    const ok = await this.uiConfirm('确定删除这个抢机任务吗？');
+                    if (!ok) return;
+                    await this.apiFetch(`/api/grab/tasks/${id}`, { method: 'DELETE' });
+                    await this.loadGrabTasks();
+                }
+            };
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="g1" x1="88" y1="64" x2="432" y2="448" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#53AEFF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="170" y1="168" x2="366" y2="344" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#D7EFFF" stop-opacity="0.9"/>
+    </linearGradient>
+    <filter id="shadow" x="36" y="36" width="440" height="440" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#0A6DDF" flood-opacity="0.32"/>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" rx="116" fill="#F3F9FF"/>
+  <g filter="url(#shadow)">
+    <rect x="64" y="64" width="384" height="384" rx="92" fill="url(#g1)"/>
+  </g>
+
+  <path d="M256 138C190.83 138 138 190.83 138 256C138 321.17 190.83 374 256 374C312.2 374 359.22 334.64 371.04 282H327.65C317.58 310.53 289.92 331 256 331C214.58 331 181 297.42 181 256C181 214.58 214.58 181 256 181C289.92 181 317.58 201.47 327.65 230H371.04C359.22 177.36 312.2 138 256 138Z" fill="url(#g2)"/>
+  <circle cx="256" cy="256" r="44" fill="#F7FCFF" fill-opacity="0.95"/>
+  <circle cx="256" cy="256" r="22" fill="#0A84FF" fill-opacity="0.28"/>
+</svg>

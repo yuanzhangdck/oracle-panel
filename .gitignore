@@ -1,0 +1,18 @@
+# dependencies
+node_modules/
+
+# runtime data
+uploads/*
+!uploads/.gitkeep
+data/*.db
+data/settings.json
+data/monthly-ip-schedule.json
+data/initial-admin-password.txt
+
+# logs
+*.log
+npm-debug.log*
+
+# env
+.env
+.old/

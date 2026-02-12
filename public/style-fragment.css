@@ -1,0 +1,51 @@
+<style>
+    body {
+        /* 使用一张更有质感的深色流体渐变壁纸，或者比较酷炫的 macOS 壁纸 */
+        background-image: url('https://images.unsplash.com/photo-1550684848-fac1c5b4e853?ixlib=rb-4.0.3&auto=format&fit=crop&w=2560&q=80');
+        background-size: cover;
+        background-attachment: fixed;
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+        color: #1d1d1f;
+    }
+    .glass {
+        /* 稍微带一点点蓝色的白色玻璃，增加清透感 */
+        background: rgba(255, 255, 255, 0.75);
+        backdrop-filter: blur(24px) saturate(180%);
+        -webkit-backdrop-filter: blur(24px) saturate(180%);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+    }
+    .glass-card {
+        background: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .glass-card:hover {
+        transform: translateY(-4px) scale(1.01);
+        background: rgba(255, 255, 255, 0.85);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        border-color: rgba(255, 255, 255, 0.9);
+    }
+    /* 霓虹按钮 */
+    .btn-primary {
+        background: linear-gradient(135deg, #007aff 0%, #0051a8 100%);
+        color: white;
+        box-shadow: 0 4px 15px rgba(0, 122, 255, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .btn-primary:hover {
+        box-shadow: 0 6px 20px rgba(0, 122, 255, 0.5);
+        transform: translateY(-1px);
+    }
+    /* 状态点动画 */
+    @keyframes pulse-green {
+        0% { box-shadow: 0 0 0 0 rgba(52, 199, 89, 0.7); }
+        70% { box-shadow: 0 0 0 6px rgba(52, 199, 89, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(52, 199, 89, 0); }
+    }
+    .status-running {
+        animation: pulse-green 2s infinite;
+    }
+</style>
