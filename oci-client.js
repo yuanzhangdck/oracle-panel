@@ -225,7 +225,90 @@ class OracleClient {
         }
     }
 
-    // 5. 查询实例本月流量
+    // 5. 一键附加 IPv6 + 开放全部端口
+    async enableIpv6(instanceId) {
+        const compartmentId = this.provider.getTenantId();
+        const vnicId = await this.getPrimaryVnicId(instanceId);
+        const vnic = await this.networkClient.getVnic({ vnicId });
+        const subnetId = vnic.vnic.subnetId;
+
+        // Get subnet to find VCN
+        const subnet = await this.networkClient.getSubnet({ subnetId });
+        const vcnId = subnet.subnet.vcnId;
+
+        // Step 1: Check if VCN has IPv6 CIDR, if not add one
+        const vcn = await this.networkClient.getVcn({ vcnId });
+        const vcnIpv6Cidrs = vcn.vcn.ipv6CidrBlocks || [];
+        if (vcnIpv6Cidrs.length === 0) {
+            await this.networkClient.addIpv6VcnCidr({
+                vcnId,
+                addVcnIpv6CidrDetails: { isOracleGuaAllocationEnabled: true }
+            });
+            // Wait for VCN update to propagate
+            await this.sleep(5000);
+        }
+
+        // Re-fetch VCN to get the allocated IPv6 CIDR
+        const vcnUpdated = await this.networkClient.getVcn({ vcnId });
+        const vcnIpv6Cidr = (vcnUpdated.vcn.ipv6CidrBlocks || [])[0];
+        if (!vcnIpv6Cidr) throw new Error('VCN IPv6 CIDR 分配失败');
+
+        // Step 2: Check if subnet has IPv6 CIDR, if not add one
+        const subnetUpdated = await this.networkClient.getSubnet({ subnetId });
+        const subnetIpv6Cidrs = subnetUpdated.subnet.ipv6CidrBlocks || [];
+        if (subnetIpv6Cidrs.length === 0) {
+            // Derive a /64 from the VCN's /56
+            // e.g. VCN: 2603:c022:1:e00::/56 -> Subnet: 2603:c022:1:e00::/64
+            const subnetIpv6Cidr = vcnIpv6Cidr.replace(/\/\d+$/, '/64');
+            await this.networkClient.addIpv6SubnetCidr({
+                subnetId,
+                addSubnetIpv6CidrDetails: { ipv6CidrBlock: subnetIpv6Cidr }
+            });
+            await this.sleep(3000);
+        }
+
+        // Step 3: Create IPv6 on the VNIC
+        const created = await this.networkClient.createIpv6({
+            createIpv6Details: { vnicId, lifetime: 'EPHEMERAL' }
+        });
+        const newIpv6 = created.ipv6.ipAddress;
+
+        // Step 4: Open all ports for IPv6 in security lists
+        const secListIds = subnetUpdated.subnet.securityListIds || [];
+        for (const slId of secListIds) {
+            const sl = await this.networkClient.getSecurityList({ securityListId: slId });
+            const existingIngress = sl.securityList.ingressSecurityRules || [];
+            const existingEgress = sl.securityList.egressSecurityRules || [];
+
+            // Check if IPv6 all-traffic rules already exist
+            const hasIpv6Ingress = existingIngress.some(r => r.source === '::/0' && r.protocol === 'all');
+            const hasIpv6Egress = existingEgress.some(r => r.destination === '::/0' && r.protocol === 'all');
+
+            const newIngress = [...existingIngress];
+            const newEgress = [...existingEgress];
+
+            if (!hasIpv6Ingress) {
+                newIngress.push({ source: '::/0', sourceType: 'CIDR_BLOCK', protocol: 'all', isStateless: false, description: 'IPv6 allow all ingress' });
+            }
+            if (!hasIpv6Egress) {
+                newEgress.push({ destination: '::/0', destinationType: 'CIDR_BLOCK', protocol: 'all', isStateless: false, description: 'IPv6 allow all egress' });
+            }
+
+            if (!hasIpv6Ingress || !hasIpv6Egress) {
+                await this.networkClient.updateSecurityList({
+                    securityListId: slId,
+                    updateSecurityListDetails: {
+                        ingressSecurityRules: newIngress,
+                        egressSecurityRules: newEgress
+                    }
+                });
+            }
+        }
+
+        return newIpv6;
+    }
+
+    // 5.1 查询实例本月流量
     async getMonthlyTraffic(instanceId) {
         const compartmentId = this.provider.getTenantId();
         const vnicId = await this.getPrimaryVnicId(instanceId);

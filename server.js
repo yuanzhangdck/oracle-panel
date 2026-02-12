@@ -657,6 +657,32 @@ app.post('/api/change-ipv6', async (req, res) => {
     });
 });
 
+app.post('/api/enable-ipv6', async (req, res) => {
+    const { keyId, instanceId } = req.body;
+    db.get(`SELECT * FROM api_keys WHERE id = ?`, [keyId], async (err, row) => {
+        if (err || !row) return res.json({ ok: false, error: 'Key not found' });
+        try {
+            const client = createClientFromKeyRow(row);
+            persistLog(`Enabling IPv6 for ${instanceId}...`);
+            const newIpv6 = await client.enableIpv6(instanceId);
+            persistLog(`IPv6 enabled! Address: ${newIpv6}`);
+
+            const cache = instanceCache.get(String(keyId));
+            if (cache && cache.instances) {
+                cache.instances = cache.instances.map(i => (i.id === instanceId ? { ...i, ipv6: newIpv6 } : i));
+                instanceCache.set(String(keyId), cache);
+            }
+
+            logAccess('enable_ipv6', `实例 ${instanceId} 附加IPv6: ${newIpv6}`, getClientIp(req));
+            await sendTelegram(`[Oracle Panel] 附加IPv6成功\n实例: ${instanceId}\nIPv6: ${newIpv6}`);
+            res.json({ ok: true, ipv6: newIpv6 });
+        } catch (e) {
+            persistLog(`Enable IPv6 failed: ${e.message}`, 'error');
+            res.json({ ok: false, error: e.message });
+        }
+    });
+});
+
 app.get('/api/traffic/:keyId/:instanceId', async (req, res) => {
     const { keyId, instanceId } = req.params;
     db.get(`SELECT * FROM api_keys WHERE id = ?`, [keyId], async (err, row) => {

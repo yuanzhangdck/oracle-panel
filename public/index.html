@@ -554,6 +554,7 @@
                             <div class="actions">
                                 <button class="btn btn-primary" @click="changeIp(inst.id)">换 IPv4</button>
                                 <button class="btn btn-primary" style="background:linear-gradient(160deg, #6c5ce7 0%, #a855f7 100%); box-shadow:0 9px 20px rgba(108,92,231,0.35);" x-show="inst.ipv6" @click="changeIpv6(inst.id)">换 IPv6</button>
+                                <button class="btn btn-secondary" style="background:linear-gradient(160deg, #00b894 0%, #00cec9 100%); color:#fff; border:none; box-shadow:0 9px 20px rgba(0,184,148,0.3);" x-show="!inst.ipv6" @click="enableIpv6(inst.id)">附加 IPv6</button>
                                 <button
                                     class="btn btn-secondary"
                                     type="button"
@@ -1322,6 +1323,31 @@
                         }
                     } catch (e) {
                         await this.uiAlert('换 IPv6 失败: 网络错误');
+                    }
+                },
+
+                async enableIpv6(instanceId) {
+                    const ok = await this.uiConfirm('将为此实例附加 IPv6 地址并开放全部端口（VCN/子网/安全列表），确定继续？');
+                    if (!ok) return;
+
+                    try {
+                        await this.uiAlert('正在附加 IPv6，可能需要 10-20 秒...', '请稍候');
+                        const res = await this.apiFetch('/api/enable-ipv6', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ keyId: this.selectedKey, instanceId })
+                        });
+                        const data = await res.json();
+                        if (data.ok) {
+                            this.instances = this.instances.map(inst =>
+                                inst.id === instanceId ? { ...inst, ipv6: data.ipv6 } : inst
+                            );
+                            await this.uiAlert('IPv6 附加成功！\n地址: ' + data.ipv6 + '\n安全列表已开放全部 IPv6 端口');
+                        } else {
+                            await this.uiAlert('附加 IPv6 失败: ' + (data.error || '未知错误'));
+                        }
+                    } catch (e) {
+                        await this.uiAlert('附加 IPv6 失败: 网络错误');
                     }
                 },
 
